@@ -1,7 +1,21 @@
+; 注意: 下述所有参数均可以在微信企业号的账号管理以及APP管理页面中查询
+
+; APP名称, 自定义
 [demo]
+; 企业号ID
 corpid =
+; 企业号秘钥
 secret =
+; 企业号应用ID(整数)
 appid =
 
+; 回调服务token
 token =
+; 回调服务加密key
 encoding_aes_key =
+
+[system]
+; 日志存储路径, 留空则默认为系统TMP目录
+log_path = ''
+; 日志文件名, 留空则默认为'easy_wechat.log'
+log_name = 'easy_wechat.log'

@@ -59,6 +59,50 @@ class XMLTestCase(unittest.TestCase):
         xml_data = utils.dict_to_xml(dict_data)
         self.assertEqual(xml_data, self.xml_string.replace('\n', '').replace(' ', ''))
 
+    def test_wrap_cdata(self):
+        """
+        测试将Dict中字符串全部包裹上<![CDATA[]]>标签的函数
+        该函数是为了符合微信接口的调用约定
+        @return: None
+        """
+        dict_data = {
+            'a': 'test',
+            'b': 'test1',
+            'c': {
+                'test': '123'
+            },
+            'd': {
+                'e': {
+                    'f': {
+                        'g': {
+                            'h': 'test2'
+                        }
+                    }
+                }
+            }
+        }
+        res_data = utils.wrap_cdata(dict_data)
+        self.assertEqual(res_data['a'], '<![CDATA[test]]>')
+        self.assertEqual(res_data['c']['test'], 123)
+        self.assertEqual(res_data['d']['e']['f']['g']['h'], '<![CDATA[test2]]>')
+
+    def test_dict_trans(self):
+        """
+        测试用于将OrderedDict转换为普通Dict的函数
+        @return: None
+        """
+        ordered = collections.OrderedDict()
+        ordered['a'] = 'test'
+        ordered['b'] = 'test1'
+        ordered['c'] = collections.OrderedDict()
+        ordered['c']['d'] = 'test2'
+        ordered['c']['e'] = collections.OrderedDict()
+        ordered['c']['e']['f'] = 'test3'
+        dict_data = utils.ordered_to_dict(ordered)
+        self.assertIsInstance(dict_data, dict)
+        self.assertIsInstance(dict_data['c'], dict)
+        self.assertIsInstance(dict_data['c']['e'], dict)
+
 
 # test entry
 if __name__ == '__main__':

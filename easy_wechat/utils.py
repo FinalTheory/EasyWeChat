@@ -22,6 +22,7 @@ import random
 import hashlib
 import time
 import struct
+import logging
 import collections
 
 import dicttoxml
@@ -65,6 +66,8 @@ def wrap_cdata(dict_data):
                 val = dict_data[key]
             except ValueError:
                 pass
+            except TypeError:
+                pass
         if isinstance(val, dict):
             dict_data[key] = wrap_cdata(val)
         elif isinstance(val, str) or isinstance(val, unicode):
@@ -101,7 +104,12 @@ def get_config():
     """
     config = ConfigParser.ConfigParser()
     dirname = os.path.dirname(os.path.abspath(sys.argv[0]))
-    config.read(os.path.join(dirname, 'config.ini'))
+    file_name = os.path.join(dirname, 'config.ini')
+    if not os.path.exists(file_name):
+        dirname = os.path.dirname(os.path.abspath(__file__))
+        dirname, unused = os.path.split(dirname)
+        file_name = os.path.join(dirname, 'config.ini')
+    config.read(file_name)
     return config
 
 
@@ -125,6 +133,7 @@ def throw_exception(message, exception_class=None):
 
 class SHA1(object):
     """计算公众平台的消息签名接口"""
+    logger = logging.getLogger('easy_wechat')
 
     def getSHA1(self, token, timestamp, nonce, encrypt):
         """
@@ -142,12 +151,14 @@ class SHA1(object):
             sha.update("".join(sortlist))
             return ierror.WXBizMsgCrypt_OK, sha.hexdigest()
         except Exception as e:
-            print e
+            self.logger.error('SHA1 failed with exception: %s' % e.message)
             return ierror.WXBizMsgCrypt_ComputeSignature_Error, None
 
 
 class XMLParse(object):
     """提供提取消息格式中的密文及生成回复消息格式的接口"""
+
+    logger = logging.getLogger('easy_wechat')
 
     # xml消息模板
     AES_TEXT_RESPONSE_TEMPLATE = """<xml>
@@ -169,7 +180,7 @@ class XMLParse(object):
             touser_name = xml_tree.find("ToUserName")
             return ierror.WXBizMsgCrypt_OK, encrypt.text, touser_name.text
         except Exception as e:
-            print e
+            self.logger.error('XMLParse extract failed with exception: %s' % e.message)
             return ierror.WXBizMsgCrypt_ParseXml_Error, None, None
 
     def generate(self, encrypt, signature, timestamp, nonce):
@@ -223,6 +234,8 @@ class PKCS7Encoder(object):
 class Prpcrypt(object):
     """提供接收和推送给公众平台消息的加解密接口"""
 
+    logger = logging.getLogger('easy_wechat')
+
     def __init__(self, key):
         """
         构造函数
@@ -252,7 +265,7 @@ class Prpcrypt(object):
             # 使用BASE64对加密后的字符串进行编码
             return ierror.WXBizMsgCrypt_OK, base64.b64encode(ciphertext)
         except Exception as e:
-            print e
+            self.logger.error('encrypt failed with exception: %s' % e.message)
             return ierror.WXBizMsgCrypt_EncryptAES_Error, None
 
     def decrypt(self, text, corpid):
@@ -266,7 +279,7 @@ class Prpcrypt(object):
             # 使用BASE64对密文进行解码，然后AES-CBC解密
             plain_text = cryptor.decrypt(base64.b64decode(text))
         except Exception as e:
-            print e
+            self.logger.error('base64 decrypt failed with exception: %s' % e.message)
             return ierror.WXBizMsgCrypt_DecryptAES_Error, None
         try:
             pad = ord(plain_text[-1])
@@ -279,7 +292,7 @@ class Prpcrypt(object):
             xml_content = content[4: xml_len + 4]
             from_corpid = content[xml_len + 4:]
         except Exception as e:
-            print e
+            self.logger.error('data unpack failed with exception: %s' % e.message)
             return ierror.WXBizMsgCrypt_IllegalBuffer, None
         if from_corpid != corpid:
             return ierror.WXBizMsgCrypt_ValidateCorpid_Error, None
@@ -299,6 +312,8 @@ class WXBizMsgCrypt(object):
     基本加解密类
     """
 
+    logger = logging.getLogger('easy_wechat')
+
     def __init__(self, sToken, sEncodingAESKey, sCorpId):
         """
         构造函数
@@ -311,7 +326,7 @@ class WXBizMsgCrypt(object):
             self.key = base64.b64decode(sEncodingAESKey + "=")
             assert len(self.key) == 32
         except Exception as e:
-            print e
+            self.logger.error('base64 decode failed with exception: %s' % e.message)
             throw_exception("[error]: EncodingAESKey invalid !", FormatException)
         self.m_sToken = sToken
         self.m_sCorpid = sCorpId

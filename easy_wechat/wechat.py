@@ -20,6 +20,8 @@ import sys
 import time
 import copy
 import json
+import logging
+import tempfile
 
 import flask
 import requests
@@ -80,7 +82,7 @@ class WeChatClient(object):
         @param touser: 用户名, '|'分割
         @param toparty: 分组名, '|'分割
         @param totag: 标签名, '|'分割
-        @return: None
+        @return: 服务器返回值
         """
         send_url = '%s/cgi-bin/message/send?access_token=%s' \
                    % (WEIXIN_URL, self.get_token())
@@ -97,11 +99,12 @@ class WeChatClient(object):
         }
         raw_data = json.dumps(message_data, ensure_ascii=False)
         res = self.url_request(send_url, False, raw_data)
+        logger = logging.getLogger('easy_wechat')
         if int(res['errcode']) == 0:
-            pass
-        # TODO: add log here
+            logger.info('send message successful')
         else:
-            raise ValueError(res['errmsg'])
+            logger.error('send message failed with error: %s' % res['errmsg'])
+        return res
 
 
 class WeChatServer(object):
@@ -138,11 +141,31 @@ class WeChatServer(object):
         @param appname: APP名称, 与配置文件中section对应
         @return: 构造的对象
         """
+        self.init_logger()
         token = self.config.get(appname, 'token')
         aes_key = self.config.get(appname, 'encoding_aes_key')
         corp_id = self.config.get(appname, 'corpid')
         WeChatServer.wxcpt = utils.WXBizMsgCrypt(token, aes_key, corp_id)
         self.appname = appname
+
+    def init_logger(self):
+        """
+        初始化日志模块相关参数
+        @return: None
+        """
+        logger = logging.getLogger('easy_wechat')
+        logger.setLevel(logging.INFO)
+        log_path = self.config.get('system', 'log_path')
+        log_name = self.config.get('system', 'log_name')
+
+        if not (os.path.exists(log_path) and os.path.isdir(log_path)):
+            log_path = tempfile.gettempdir()
+
+        if not log_name:
+            log_name = 'easy_wechat.log'
+
+        log_handler = logging.FileHandler(os.path.join(log_path, log_name))
+        logger.addHandler(log_handler)
 
     def register_callback(self, msg_type, func):
         """
@@ -163,11 +186,14 @@ class WeChatServer(object):
         响应对/weixin请求的函数
         @return: 返回响应内容
         """
-        if flask.request.method == 'GET':
+        method = flask.request.method
+        if method == 'GET':
             return WeChatServer.verify()
-        elif flask.request.method == 'POST':
+        elif method == 'POST':
             return WeChatServer.do_reply()
         else:
+            logger = logging.getLogger('easy_wechat')
+            logger.error('unsupported method, return 405 method not allowed')
             # unknown method, return 405 method not allowed
             flask.abort(405)
 
@@ -184,6 +210,8 @@ class WeChatServer(object):
         # do decoding and return
         ret, echo_str_res = WeChatServer.wxcpt.VerifyURL(verify_msg_sig, timestamp, nonce, echo_str)
         if ret != 0:
+            logger = logging.getLogger('easy_wechat')
+            logger.error('verification failed with return value %d' % ret)
             # if verification failed, return 403 forbidden
             flask.abort(403)
         else:
@@ -223,7 +251,9 @@ class WeChatServer(object):
                     if ret_val == 0:
                         return flask.Response(encrypted_data, mimetype='text/xml')
 
-        # # if decryption failed or all other reasons, return 400 bad request code
+        logger = logging.getLogger('easy_wechat')
+        logger.error('request failed with request data: %r' % req_data)
+        # if decryption failed or all other reasons, return 400 bad request code
         flask.abort(400)
 
     def run(self, *args, **kwargs):

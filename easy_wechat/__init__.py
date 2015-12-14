@@ -13,5 +13,5 @@
 package初始化, 导入类
 """
 
-from wechat import WeChatServer
-from wechat import WeChatClient
+from easy_wechat.wechat import WeChatServer
+from easy_wechat.wechat import WeChatClient
