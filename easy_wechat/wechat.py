@@ -6,7 +6,7 @@
 # Created Time: 2015/12/11 12:44
 # Description:
 #
-# Copyright (c) 2014 Baidu.com, Inc. All Rights Reserved
+# Copyright (c) 2015 Baidu.com, Inc. All Rights Reserved
 #
 
 """
