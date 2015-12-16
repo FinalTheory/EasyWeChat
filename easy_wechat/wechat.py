@@ -36,14 +36,17 @@ class WeChatClient(object):
     消息发送类
     """
 
-    def __init__(self, appname):
+    def __init__(self, appname, ini_name=None):
         """
         构造函数
         @param appname: 应用名称, 需要与配置文件中section对应
         @return: WeChatClient对象实例
         """
         self.appname = appname
-        self.config = utils.get_config()
+        if ini_name:
+            self.config = utils.get_config(ini_name)
+        else:
+            self.config = utils.get_config()
         self.CorpID = self.config.get(self.appname, 'corpid')
         self.Secret = self.config.get(self.appname, 'secret')
         self.AppID = self.config.get(self.appname, 'appid')
@@ -106,6 +109,9 @@ class WeChatClient(object):
             logger.error('send message failed with error: %s' % res['errmsg'])
         return res
 
+    def upload_media(self):
+        pass
+
 
 class WeChatServer(object):
     """
@@ -135,12 +141,14 @@ class WeChatServer(object):
             cls._instance = orig.__new__(cls, *args)
         return cls._instance
 
-    def __init__(self, appname):
+    def __init__(self, appname, ini_name=None):
         """
         构造函数
         @param appname: APP名称, 与配置文件中section对应
         @return: 构造的对象
         """
+        if ini_name:
+            self.config = utils.get_config(ini_name)
         self.init_logger()
         token = self.config.get(appname, 'token')
         aes_key = self.config.get(appname, 'encoding_aes_key')

@@ -97,18 +97,19 @@ def xml_to_dict(xml_string):
     return xmltodict.parse(xml_string)['xml']
 
 
-def get_config():
+def get_config(ini_name="config.ini"):
     """
     根据命令行参数, 自动查找配置文件路径并返回ConfigParser对象
+    @param ini_name: 配置文件默认名称
     @return: ConfigParser对象
     """
     config = ConfigParser.ConfigParser()
     dirname = os.path.dirname(os.path.abspath(sys.argv[0]))
-    file_name = os.path.join(dirname, 'config.ini')
+    file_name = os.path.join(dirname, ini_name)
     if not os.path.exists(file_name):
         dirname = os.path.dirname(os.path.abspath(__file__))
         dirname, unused = os.path.split(dirname)
-        file_name = os.path.join(dirname, 'config.ini')
+        file_name = os.path.join(dirname, ini_name)
     config.read(file_name)
     return config
 
