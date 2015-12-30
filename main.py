@@ -33,4 +33,4 @@ class TestClass(object):
 if __name__ == '__main__':
     server = easy_wechat.WeChatServer('demo')
     server.register_callback('text', TestClass().reply_func)
-    server.run(host='0.0.0.0', port=6000, debug=False)
+    server.run(host='0.0.0.0', port=6000, debug=False, threaded=False)

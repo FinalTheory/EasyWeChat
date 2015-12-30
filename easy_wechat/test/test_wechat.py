@@ -26,7 +26,7 @@ import easy_wechat.utils as utils
 import easy_wechat
 
 
-class MockResponse:
+class MockResponse(object):
     """
     模拟的Response对象
     """
@@ -87,11 +87,11 @@ class TestWeChat(unittest.TestCase):
         with mock.patch('requests.get', side_effect=mocked_requests_get):
             with mock.patch('requests.post', side_effect=mocked_requests_post):
                 client = easy_wechat.WeChatClient('demo', 'config_test.ini')
-                res_dict = client.send_text('hello, world', 'FinalTheory')
+                res_dict = client.send_media('text', {'content': 'hello, world'}, 'FinalTheory')
                 self.assertEqual(res_dict['errcode'], 0)
                 self.assertNotEqual(
-                        client.send_text('hello, world',
-                                         '645645')['errcode'], 0)
+                        client.send_media('text', {'content': 'hello, world'},
+                                          '645645')['errcode'], 0)
 
     def test_callback(self):
         """

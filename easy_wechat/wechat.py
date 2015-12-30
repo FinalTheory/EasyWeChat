@@ -11,8 +11,7 @@
 
 """
 微信企业号消息接口封装模块
-由于该模块直接与微信服务端进行交互, 因此无需单测
-只要能够正确返回结果即可
+封装了多媒体消息接口以及普通文本消息接口
 """
 
 import os
@@ -22,6 +21,7 @@ import copy
 import json
 import logging
 import tempfile
+import mimetypes
 
 import flask
 import requests
@@ -60,13 +60,21 @@ class WeChatClient(object):
         @param data: 附加数据(POST)
         @return: 转换为dict的请求结果
         """
-        if get:
-            req = requests.get(url)
-            res = json.loads(req.content)
+        try:
+            if get:
+                req = requests.get(url)
+            else:
+                req = requests.post(url, data)
+        except Exception as e:
+            # wrap exception message with more detail
+            raise type(e)('unable to retrieve URL: %s with exception: %s', (url, e.message))
         else:
-            req = requests.post(url, data)
-            res = json.loads(req.content)
-        return res
+            try:
+                res_dict = json.loads(req.content)
+            except Exception as e:
+                raise type(e)('invalid json content: %s with exception: %s',
+                              (req.content, e.message))
+        return res_dict
 
     def get_token(self):
         """
@@ -78,39 +86,107 @@ class WeChatClient(object):
         res = self.url_request(token_url)
         return res['access_token']
 
-    def send_text(self, message, touser, toparty='', totag=''):
+    def upload_media(self, file_type, file_path):
         """
-        发送消息给指定的用户
-        @param message: 消息体
+        上传临时媒体素材到微信服务器
+        @param file_type: 文件类型
+        @param file_path: 文件绝对路径
+        @return: 服务器返回值dict
+        """
+
+        def make_err_return(err_msg):
+            """
+            一个简单的内部函数, 将错误信息包装并返回
+            @param err_msg: 错误信息
+            @return:
+            """
+            return {
+                'errcode': -1,
+                'errmsg': err_msg,
+            }
+
+        logger = logging.getLogger('easy_wechat')
+        if file_type not in ('image', 'voice', 'video', 'file'):
+            errmsg = 'Invalid media/message format'
+            logger.error(errmsg)
+            return make_err_return(errmsg)
+        try:
+            post_url = '%s/cgi-bin/media/upload?access_token=%s&type=%s' \
+                       % (WEIXIN_URL, self.get_token(), file_type)
+        except Exception as e:
+            logger.error(e.message)
+            return make_err_return(e.message)
+        try:
+            file_dir, file_name = os.path.split(file_path)
+            files = {'file': (file_name, open(file_path, 'rb'),
+                              mimetypes.guess_type(file_path, strict=False), {'Expires': '0'})}
+            r = requests.post(post_url, files=files)
+        except Exception as e:
+            logger.error(e.message)
+            return make_err_return(e.message)
+        try:
+            res_dict = json.loads(r.content)
+        except Exception as e:
+            raise type(e)('invalid json content: %s with exception: %s',
+                          (r.content, e.message))
+        return res_dict
+
+    def send_media(self, media_type, media_content, touser,
+                   toparty='', totag=''):
+        """
+        发送消息/视频/图片给指定的用户
+        @param media_type: 消息类型
+        @param media_content: 消息内容, 是一个dict, 包含具体的描述信息
         @param touser: 用户名, '|'分割
         @param toparty: 分组名, '|'分割
         @param totag: 标签名, '|'分割
-        @return: 服务器返回值
+        @return: 服务器返回值dict
         """
-        send_url = '%s/cgi-bin/message/send?access_token=%s' \
-                   % (WEIXIN_URL, self.get_token())
+        logger = logging.getLogger('easy_wechat')
+        if media_type not in ('text', 'image', 'voice', 'video', 'file'):
+            errmsg = 'Invalid media/message format'
+            logger.error(errmsg)
+            return {
+                'errcode': -1,
+                'errmsg': errmsg,
+            }
+        try:
+            send_url = '%s/cgi-bin/message/send?access_token=%s' \
+                       % (WEIXIN_URL, self.get_token())
+        except Exception as e:
+            # since all error code definitions of wechat is unknown
+            # we simply just return -1 as our error code
+            logger.error(e.message)
+            return {
+                'errcode': -1,
+                'errmsg': e.message,
+            }
         message_data = {
             "touser": touser,
             "toparty": toparty,
             "totag": totag,
-            "msgtype": "text",
+            "msgtype": media_type,
             "agentid": self.AppID,
-            "text": {
-                "content": message
-            },
+            media_type: media_content,
             "safe": "0"
         }
         raw_data = json.dumps(message_data, ensure_ascii=False)
-        res = self.url_request(send_url, False, raw_data)
-        logger = logging.getLogger('easy_wechat')
+        try:
+            res = self.url_request(send_url, False, raw_data.encode('utf-8'))
+        except Exception as e:
+            sys.stderr.write(str(e) + '\n')
+            errmsg = 'failed when post json data: %s to wechat server with exception: %s' \
+                     % (raw_data, e.message)
+            logger.error(errmsg)
+            return {
+                'errcode': -1,
+                'errmsg': errmsg,
+            }
         if int(res['errcode']) == 0:
             logger.info('send message successful')
         else:
             logger.error('send message failed with error: %s' % res['errmsg'])
         return res
-
-    def upload_media(self):
-        pass
 
 
 class WeChatServer(object):
@@ -254,7 +330,7 @@ class WeChatServer(object):
                         if not res_dict.get(key, None):
                             res_dict[key] = val
                     xml_data = utils.dict_to_xml(res_dict)
-                    ret_val, encrypted_data =\
+                    ret_val, encrypted_data = \
                         WeChatServer.wxcpt.EncryptMsg(xml_data, nonce, timestamp)
                     if ret_val == 0:
                         return flask.Response(encrypted_data, mimetype='text/xml')
