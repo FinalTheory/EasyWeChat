@@ -12,6 +12,10 @@
 """
 入口文件, 用于启动服务端接口
 """
+import os
+import sys
+module_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(module_dir)
 
 import easy_wechat
 
