@@ -18,6 +18,7 @@ module_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(module_dir)
 
 import easy_wechat
+# from gevent.wsgi import WSGIServer
 
 
 class TestClass(object):
@@ -38,3 +39,6 @@ if __name__ == '__main__':
     server = easy_wechat.WeChatServer('demo')
     server.register_callback('text', TestClass().reply_func)
     server.run(host='0.0.0.0', port=6000, debug=False, threaded=False)
+    # 使用gevent可以提高并发处理能力
+    # http_server = WSGIServer(('', 8000), server.app)
+    # http_server.serve_forever()
