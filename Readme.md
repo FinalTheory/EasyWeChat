@@ -16,6 +16,42 @@
 
 ### 应用
 
+#### 程序猿搬砖监控器
+
+为了方便家人以及妹子查看码农是否在公司搬砖，还是已经回家打PS4，并且避免打扰到程序猿写代码时的思路，故开发这个监控器，其硬件如下：
+
+![image](https://raw.githubusercontent.com/FinalTheory/EasyWeChat/master/images/monkey_monitor.jpg)
+
+实现的效果是，通过发送消息给对应的企业号，可以让摄像头自动拍照并回复该照片，或者录一段视频并回复。
+
+![image](https://raw.githubusercontent.com/FinalTheory/EasyWeChat/master/images/wechat.png)
+
+也可以直接访问某域名（如pi.xxx.com）实时查看摄像头所拍摄到的视频流，但这样由于经过VPS中转，速度可能略卡。
+
+![image](https://raw.githubusercontent.com/FinalTheory/EasyWeChat/master/images/stream.png)
+
+至此，家人和妹子就不用发消息询问程序猿是否还在加班了。
+
+配置方法：
+
+- 在树莓派上运行EasyWeChat，监听8000端口；
+- 使用`ngrok`将树莓派的8000端口映射到远程VPS上的某端口，例如同样为8000端口；
+- 增加`nginx`转发规则，将对80端口的特定域名的请求（如pi.xxx.com）转发到8000端口。
+
+其中`nginx`转发规则示意如下：
+
+    server {
+        listen 80;
+        server_name pi.xxx.com;
+        location / {
+            proxy_pass http://pi.xxx.com:8000;
+        }
+    }
+
+
+#### 12306余票监控
+
+Loading……
 
 
 ### 依赖库
@@ -77,12 +113,47 @@
 
 这样，在成员函数内部，我们就可以直接访问对象的成员变量，来实现我们所需要的操作了。
 
+此外，如果需要获得更好的并发处理能力，建议不要使用Flask自带的Server，因为它主要用来调试的，只是简单的多线程实现。可以直接采用`gevent`并发框架来获得更好的并发性能。示例代码如下：
+
+    from gevent.wsgi import WSGIServer
+    
+    http_server = WSGIServer(('', 8000), server.app)
+    http_server.serve_forever()
+
+
 ### 文档
 
-#### 主动模式
+#### 主动发送消息
+
+首先实例化一个`client`对象：
+
+    client = WeChatClient('demo')
+
+其中`demo`是`config.ini`中对应section的名称。
+
+然后调用`client`对象的`send_media`方法以发送消息。示例代码如下：
+
+    client.send_media(
+        'text', {"content": 'message'}, 'user_name')
+
+`send_media`函数的各个参数含义请直接参考代码注释。总而言之，这些参数遵循参考链接[1]中的微信企业号接口约定，并去除了冗余部分。
 
 
-#### 回调模式
+#### 回调式响应消息
+
+首先实例化一个`server`对象：
+
+    server = MonkeyServer('demo')
+
+然后为需要自动回复的消息类型注册回调函数，如下所示表示注册一个回复`text`文本类型消息的回调函数：
+
+    server.register_callback('text', reply_func)
+
+EasyWeChat会以一个字典作为传入参数来调用回调函数，**字典的内容符合参考链接[2]中的企业号消息回调约定**。开发者所注册的回调函数需要返回一个**字典**，其中内容应该“大致”符合参考链接[3]中的消息返回值约定。
+
+最后启动Server接受请求即可，可以选择使用gevent框架或者Flask自带Server。
+
+其他细节请参阅源代码以及示例应用。
 
 
 ### 已知限制：

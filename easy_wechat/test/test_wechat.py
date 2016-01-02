@@ -203,7 +203,7 @@ class TestWeChat(unittest.TestCase):
             corp_id = config.get('demo', 'corpid')
 
             server = easy_wechat.WeChatServer('demo', 'config_test.ini')
-            easy_wechat.WeChatServer.wxcpt = utils.WXBizMsgCrypt(token, aes_key, corp_id)
+            server.wxcpt = utils.WXBizMsgCrypt(token, aes_key, corp_id)
             self.assertIsInstance(server.callback(), str)
 
 
