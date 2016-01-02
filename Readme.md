@@ -20,15 +20,15 @@
 
 为了方便家人以及妹子查看码农是否在公司搬砖，还是已经回家打PS4，并且避免打扰到程序猿写代码时的思路，故开发这个监控器，其硬件如下：
 
-![image](https://raw.githubusercontent.com/FinalTheory/EasyWeChat/master/images/monkey_monitor.jpg)
+<img src="https://raw.githubusercontent.com/FinalTheory/EasyWeChat/master/images/monkey_monitor.jpg" width="400">
 
 实现的效果是，通过发送消息给对应的企业号，可以让摄像头自动拍照并回复该照片，或者录一段视频并回复。
 
-![image](https://raw.githubusercontent.com/FinalTheory/EasyWeChat/master/images/wechat.png)
+<img src="https://raw.githubusercontent.com/FinalTheory/EasyWeChat/master/images/wechat.png" width="250">
 
 也可以直接访问某域名（如pi.xxx.com）实时查看摄像头所拍摄到的视频流，但这样由于经过VPS中转，速度可能略卡。
 
-![image](https://raw.githubusercontent.com/FinalTheory/EasyWeChat/master/images/stream.png)
+<img src="https://raw.githubusercontent.com/FinalTheory/EasyWeChat/master/images/stream.png" width="250">
 
 至此，家人和妹子就不用发消息询问程序猿是否还在加班了。
 
